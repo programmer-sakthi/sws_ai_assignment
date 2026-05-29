@@ -88,3 +88,20 @@
   color: var(--text);
   font-size: 1.1rem;
 }
+
+.logout-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+}
+
+.logout-btn:hover {
+  background: #ef4444;
+  color: white;
+}
+
