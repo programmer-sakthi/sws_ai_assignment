@@ -2,13 +2,13 @@ import React from 'react';
 import { formatFileSize } from '../utils';
 import './FileProgressList.css';
 
-const FileProgressList = ({ uploads }) => {
+const FileProgressList = ({ uploads, isCollapsed }) => {
   if (!uploads || uploads.length === 0) return null;
 
   return (
     <div className="progress-list-container">
       <h3 className="section-title">Upload Progress</h3>
-      <div className="progress-list">
+      <div className={`progress-list ${isCollapsed ? 'collapsed' : ''}`}>
         {uploads.map((upload) => (
           <div key={upload.id} className="progress-item glass-panel">
             <div className="progress-info">

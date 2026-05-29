@@ -105,3 +105,23 @@
   color: white;
 }
 
+.bulk-banner {
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid var(--accent);
+  color: var(--text-h);
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-weight: 500;
+  animation: slideDown 0.3s ease-out;
+}
+
+.bulk-banner svg {
+  color: var(--accent);
+  animation: pulse 2s infinite;
+}
+
+

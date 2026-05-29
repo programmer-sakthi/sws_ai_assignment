@@ -4,12 +4,38 @@ import UploadZone from './components/UploadZone';
 import FileProgressList from './components/FileProgressList';
 import DocumentList from './components/DocumentList';
 import AuthForm from './components/AuthForm';
+import NotificationCenter from './components/NotificationCenter';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('jwtToken') || null);
   const [userName, setUserName] = useState(localStorage.getItem('userName') || '');
   const [uploads, setUploads] = useState([]);
   const [completedDocuments, setCompletedDocuments] = useState([]);
+  const [isBulkUpload, setIsBulkUpload] = useState(false);
+
+  useEffect(() => {
+    if (token) {
+      // Fetch initial files
+      fetch('http://localhost:3000/files', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const formattedData = data.map(doc => ({
+            id: doc.id,
+            name: doc.original_name,
+            size: doc.size,
+            uploadDate: doc.created_at,
+            url: doc.url,
+            public_id: doc.public_id
+          }));
+          setCompletedDocuments(formattedData);
+        }
+      })
+      .catch(console.error);
+    }
+  }, [token]);
 
   const handleAuthSuccess = (newToken, newUsername) => {
     localStorage.setItem('jwtToken', newToken);
@@ -44,7 +70,6 @@ function App() {
 
       xhr.addEventListener('load', () => {
         if (xhr.status === 401 || xhr.status === 403) {
-          // Token expired or invalid
           handleLogout();
           reject(new Error('Session expired. Please log in again.'));
           return;
@@ -58,13 +83,13 @@ function App() {
             ));
             
             const newDoc = {
-              id: fileObj.id,
-              name: fileObj.file.name,
-              size: fileObj.file.size,
-              uploadDate: new Date().toISOString(),
+              id: response.file.id,
+              name: response.file.name,
+              size: response.file.size,
+              uploadDate: response.file.uploadDate,
               url: response.file.url,
             };
-            setCompletedDocuments(prev => [...prev, newDoc]);
+            setCompletedDocuments(prev => [newDoc, ...prev]);
             resolve(newDoc);
           } catch (err) {
             setUploads(prev => prev.map(u => 
@@ -88,16 +113,20 @@ function App() {
       });
 
       xhr.open('POST', 'http://localhost:3000/upload', true);
-      // Add Authorization header
       xhr.setRequestHeader('Authorization', `Bearer ${currentToken}`);
       xhr.send(formData);
     });
   };
 
-  const handleFilesSelected = (files) => {
+  const handleFilesSelected = async (files) => {
     if (!token) {
       alert("Please log in to upload files.");
       return;
+    }
+
+    const isBulk = files.length > 3;
+    if (isBulk) {
+      setIsBulkUpload(true);
     }
 
     const newUploads = files.map(file => ({
@@ -109,19 +138,45 @@ function App() {
 
     setUploads(prev => [...prev, ...newUploads]);
 
-    newUploads.forEach(uploadObj => {
-      setTimeout(() => {
-        setUploads(prev => prev.map(u => 
-          u.id === uploadObj.id ? { ...u, status: 'Uploading' } : u
-        ));
-        uploadFile(uploadObj, token).catch(err => {
-          console.error(err);
-          if (err.message.includes('Session expired')) {
-            alert(err.message);
-          }
-        });
-      }, 100);
+    const uploadPromises = newUploads.map(uploadObj => {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          setUploads(prev => prev.map(u => 
+            u.id === uploadObj.id ? { ...u, status: 'Uploading' } : u
+          ));
+          uploadFile(uploadObj, token)
+            .then(resolve)
+            .catch(err => {
+              console.error(err);
+              if (err.message.includes('Session expired')) {
+                alert(err.message);
+              }
+              resolve(null); // Resolve anyway so Promise.all completes
+            });
+        }, 100);
+      });
     });
+
+    // Wait for all uploads to finish
+    await Promise.all(uploadPromises);
+
+    // After a bulk upload completes, notify the backend
+    if (isBulk) {
+      setTimeout(() => setIsBulkUpload(false), 3000); // hide bulk banner after 3 seconds
+
+      try {
+        await fetch('http://localhost:3000/uploads/batch-complete', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ count: files.length })
+        });
+      } catch (err) {
+        console.error("Failed to report batch completion", err);
+      }
+    }
   };
 
   return (
@@ -131,12 +186,15 @@ function App() {
         <p>Secure PDF Storage System</p>
         
         {token && (
-          <button 
-            onClick={handleLogout} 
-            className="btn logout-btn"
-          >
-            Logout
-          </button>
+          <>
+            <NotificationCenter token={token} />
+            <button 
+              onClick={handleLogout} 
+              className="btn logout-btn"
+            >
+              Logout
+            </button>
+          </>
         )}
       </header>
 
@@ -144,6 +202,13 @@ function App() {
         <AuthForm onAuthSuccess={handleAuthSuccess} />
       ) : (
         <>
+          {isBulkUpload && (
+            <div className="bulk-banner glass-panel">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              Upload in progress — processing {uploads.filter(u => u.status === 'Pending' || u.status === 'Uploading').length} files in background.
+            </div>
+          )}
+
           <div className="welcome-banner glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
             <h2>Welcome, {userName}!</h2>
             <p>You are authenticated and ready to upload documents.</p>
@@ -151,7 +216,7 @@ function App() {
           
           <UploadZone onFilesSelected={handleFilesSelected} />
           
-          <FileProgressList uploads={uploads} />
+          <FileProgressList uploads={uploads} isCollapsed={isBulkUpload} />
           
           <DocumentList documents={completedDocuments} />
         </>
