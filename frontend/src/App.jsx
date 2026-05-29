@@ -1,122 +1,148 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import React, { useState } from 'react';
+import './App.css';
+import UploadZone from './components/UploadZone';
+import FileProgressList from './components/FileProgressList';
+import DocumentList from './components/DocumentList';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [userName, setUserName] = useState('');
+  const [isSetupComplete, setIsSetupComplete] = useState(false);
+  const [uploads, setUploads] = useState([]);
+  const [completedDocuments, setCompletedDocuments] = useState([]);
+
+  const handleSetupSubmit = (e) => {
+    e.preventDefault();
+    if (userName.trim().length > 0) {
+      setIsSetupComplete(true);
+    }
+  };
+
+  const uploadFile = (fileObj) => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const formData = new FormData();
+      formData.append('document', fileObj.file);
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = Math.round((e.loaded / e.total) * 100);
+          setUploads(prev => prev.map(u => 
+            u.id === fileObj.id ? { ...u, progress: percentComplete } : u
+          ));
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            // Update status to complete
+            setUploads(prev => prev.map(u => 
+              u.id === fileObj.id ? { ...u, status: 'Complete', progress: 100 } : u
+            ));
+            
+            // Add to completed documents
+            const newDoc = {
+              id: fileObj.id,
+              name: fileObj.file.name,
+              size: fileObj.file.size,
+              uploadDate: new Date().toISOString(),
+              url: response.file.url,
+            };
+            setCompletedDocuments(prev => [...prev, newDoc]);
+            resolve(newDoc);
+          } catch (err) {
+            setUploads(prev => prev.map(u => 
+              u.id === fileObj.id ? { ...u, status: 'Failed' } : u
+            ));
+            reject(err);
+          }
+        } else {
+          setUploads(prev => prev.map(u => 
+            u.id === fileObj.id ? { ...u, status: 'Failed' } : u
+          ));
+          reject(new Error('Upload failed'));
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        setUploads(prev => prev.map(u => 
+          u.id === fileObj.id ? { ...u, status: 'Failed' } : u
+        ));
+        reject(new Error('Network Error'));
+      });
+
+      xhr.open('POST', 'http://localhost:3000/upload', true);
+      xhr.send(formData);
+    });
+  };
+
+  const handleFilesSelected = (files) => {
+    const newUploads = files.map(file => ({
+      id: Math.random().toString(36).substring(7) + Date.now(),
+      file,
+      progress: 0,
+      status: 'Pending'
+    }));
+
+    setUploads(prev => [...prev, ...newUploads]);
+
+    // Start upload for each file immediately
+    newUploads.forEach(uploadObj => {
+      // Small timeout to allow UI to update with 'Pending' status first
+      setTimeout(() => {
+        setUploads(prev => prev.map(u => 
+          u.id === uploadObj.id ? { ...u, status: 'Uploading' } : u
+        ));
+        uploadFile(uploadObj).catch(err => console.error(err));
+      }, 100);
+    });
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app-container">
+      <header className="app-header">
+        <h1>DocVault</h1>
+        <p>Secure PDF Storage System</p>
+      </header>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      {!isSetupComplete ? (
+        <div className="user-setup glass-panel">
+          <h2>Welcome to DocVault</h2>
+          <form onSubmit={handleSetupSubmit} className="input-group">
+            <input 
+              type="text" 
+              placeholder="Enter your name to continue..." 
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              autoFocus
+            />
+            <button 
+              type="submit" 
+              className="btn" 
+              disabled={userName.trim().length === 0}
+              style={{ justifyContent: 'center' }}
+            >
+              Continue
+            </button>
+          </form>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      ) : (
+        <>
+          <div className="welcome-banner">
+            <h2>Welcome, {userName}!</h2>
+            <p>Upload your PDF documents securely.</p>
+          </div>
+          
+          <UploadZone onFilesSelected={handleFilesSelected} />
+          
+          <FileProgressList uploads={uploads} />
+          
+          <DocumentList documents={completedDocuments} />
+        </>
+      )}
+    </div>
+  );
 }
 
-export default App
+export default App;
