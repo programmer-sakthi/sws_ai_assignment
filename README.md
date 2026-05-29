@@ -4,6 +4,12 @@ A full-stack web application that enables users to securely register, authentica
 
 ---
 
+## Deplyment URLS 
+
+- **Frontend:** [https://sws-ai-assignment.vercel.app](https://sws-ai-assignment-git-master-sakthis-projects-at-vercel.vercel.app/)
+- **Backend:** [https://sws-ai-assignment.onrender.com](https://swsaiassignment-production.up.railway.app)
+
+
 ## 🗂️ Project Structure
 
 ```
