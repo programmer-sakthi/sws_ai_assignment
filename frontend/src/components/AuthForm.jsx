@@ -16,7 +16,7 @@ const AuthForm = ({ onAuthSuccess }) => {
     const endpoint = isLogin ? '/login' : '/register';
 
     try {
-      const response = await fetch(`http://localhost:3000${endpoint}`, {
+      const response = await fetch(`https://swsaiassignment-production.up.railway.app${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

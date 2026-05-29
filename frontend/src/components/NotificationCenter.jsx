@@ -12,7 +12,7 @@ const NotificationCenter = ({ token }) => {
   useEffect(() => {
     if (!token) return;
 
-    fetch('http://localhost:3000/notifications', {
+    fetch('https://swsaiassignment-production.up.railway.app/notifications', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -29,7 +29,7 @@ const NotificationCenter = ({ token }) => {
   useEffect(() => {
     if (!token) return;
 
-    const eventSource = new EventSource(`http://localhost:3000/events?token=${token}`);
+    const eventSource = new EventSource(`https://swsaiassignment-production.up.railway.app/events?token=${token}`);
     
     eventSource.onmessage = (event) => {
       try {
@@ -62,7 +62,7 @@ const NotificationCenter = ({ token }) => {
   const markAsRead = async (id) => {
     if (!token) return;
     try {
-      await fetch(`http://localhost:3000/notifications/${id}/read`, {
+      await fetch(`https://swsaiassignment-production.up.railway.app/notifications/${id}/read`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -76,7 +76,7 @@ const NotificationCenter = ({ token }) => {
   const markAllAsRead = async () => {
     if (!token) return;
     try {
-      await fetch(`http://localhost:3000/notifications/read-all`, {
+      await fetch(`https://swsaiassignment-production.up.railway.app/notifications/read-all`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });

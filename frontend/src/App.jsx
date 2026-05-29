@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
-import UploadZone from './components/UploadZone';
-import FileProgressList from './components/FileProgressList';
-import DocumentList from './components/DocumentList';
 import AuthForm from './components/AuthForm';
+import DocumentList from './components/DocumentList';
+import FileProgressList from './components/FileProgressList';
 import NotificationCenter from './components/NotificationCenter';
+import UploadZone from './components/UploadZone';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('jwtToken') || null);
@@ -16,7 +16,7 @@ function App() {
   useEffect(() => {
     if (token) {
       // Fetch initial files
-      fetch('http://localhost:3000/files', {
+      fetch('https://swsaiassignment-production.up.railway.app/files', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       .then(res => res.json())
@@ -112,7 +112,7 @@ function App() {
         reject(new Error('Network Error'));
       });
 
-      xhr.open('POST', 'http://localhost:3000/upload', true);
+      xhr.open('POST', 'https://swsaiassignment-production.up.railway.app/upload', true);
       xhr.setRequestHeader('Authorization', `Bearer ${currentToken}`);
       xhr.send(formData);
     });
@@ -165,7 +165,7 @@ function App() {
       setTimeout(() => setIsBulkUpload(false), 3000); // hide bulk banner after 3 seconds
 
       try {
-        await fetch('http://localhost:3000/uploads/batch-complete', {
+        await fetch('https://swsaiassignment-production.up.railway.app/uploads/batch-complete', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
